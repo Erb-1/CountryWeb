@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <!--Author: Erblin Berish (eb523)-->
+
+    <title>Country List</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        p {
+            font-weight: bold;
+        }
+
+        table img{
+            width: 100px; 
+            height: auto;
+            border: 1px solid #000;
+        }
+
+        #region-selector {
+            margin-top: 20px;
+            font-size: 25px;
+            align-items: first baseline; 
+        }
+
+        #content-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .table-container {
+            max-height: 300px;
+            align-items: center; 
+            
+        }
+
+        h1{
+            text-decoration: underline;
+            font-weight: bold;
+            font-size: 100px;
+            margin-top: 0;
+        }
+
+        .count{
+            width: 20%;
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+
+        .search{
+            width: 20%;
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 17px; 
+        }
+
+        th, td {
+            padding: 12px;
+            border: 1px solid #ddd;
+        }
+
+        th {
+            background-color:#b3d1ff;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        img {
+            width: 24px;
+            height: auto;
+        }
+    </style>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            //fetching the region list for the dropdown.
+            $.ajax({
+                url: 'https://www.cs.kent.ac.uk/people/staff/yh/api/country-data/countries/regions',
+                type: 'GET',
+                dataType: 'json',
+                success: function(data) {
+                    var dropdown = $('#region-selector');
+                    //FOR LOOP 
+                    //for each region imported, it creates an option in the drop down.
+                    data.forEach(function(region) {
+                        var option = $('<option>', {
+                            value: region,
+                            text: region
+                        });
+                        dropdown.append(option);
+                    });
+                },
+            });
+            
+            var $demo = $('#demo');
+
+
+            //event listener to allow for the creation of a dynamic table using the imported API data on each region.
+            $("#region-selector").on('change', function() {
+
+                //var for counter
+                var quantity = 0;
+
+                //var for largest pop
+                var maxPop = 0;
+                var countryWithMaxPop = '';
+                
+                //var for largest area
+                var area = 0;
+                var largestCountry = "";
+                
+                var selectedRegion = $(this).val();
+
+                //IF dropdown NOT EMPTY
+                if (selectedRegion !== "") {
+                    //THEN...
+                    $.ajax({
+                        url: 'https://www.cs.kent.ac.uk/people/staff/yh/api/country-data/countries/region/' + selectedRegion,
+                        type: 'GET',
+                        dataType: 'json',
+                        success: function(data) {
+                            var table = '<table><tr><th>Code</th><th>Flag</th><th>Name</th><th>Capital</th><th>Population</th><th>Area</th><th>Population Density</th></tr>';
+                            
+                            //FOR LOOP
+                            //adding a row on the table for each country found in the regions API.
+                            data.forEach(function(country) {
+                                table += '<tr><th>' + country.code + '</th><td><img src="' + country.flag + '" alt="Flag"></td><td>' + country.name + '</td><td>' + country.capital + '</td><td>' + country.population + '</td><td>' + country.area + '</td><td>' + (country.population/country.area).toFixed(1); + '</td></tr>';
+                            });
+                            table += '</table>';
+                            $demo.html(table);
+
+                            //FOR LOOP
+                            //-Country Counter-
+                            data.forEach(function(country){
+                                quantity += 1;
+                                return quantity;
+                            });
+                            var counter = '<p>Number of Countries: ' + quantity + '</p>';
+                            $('#count').html(counter);
+                            
+                            /*check for unusable data
+                            -not sure if included on purpose or accidental but some data is 0 for area and null for capital.
+                            -just making it visible
+                            */
+                            $('table').find('td').each(function(){
+                                var text = $(this).text();
+                                if (text === 'null' || text === '0'){
+                                    $(this).css('color', 'red');
+                                    $(this).css('font-weight','900');
+                                }
+                            })
+                            
+                            //-Largest Population Finder-
+                            data.forEach(function(country) {
+                                if(country.population > maxPop){
+                                    maxPop = country.population;
+                                    countryWithMaxPop = country.name;
+                                }
+
+                            });
+                            $('#largestPop').html('<p>Largest Population: '+countryWithMaxPop+'</p>');
+
+                            //-Largest Area Finder-
+                            data.forEach(function(country) {
+                                if(country.area > area){
+                                    area = country.area;
+                                    largestCountry = country.name;
+                                }
+
+                            });
+                            $('#largestArea').html('<p>Largest Area: '+largestCountry+'</p>');
+
+                                
+                            //-Search Bar-
+                            $('#searchBar').on('input', function(){
+                                var search = $(this).val().toLowerCase();
+                                var selectedRegion = $('#region-selector').val();
+
+                                //IF NOT empty
+                                if (selectedRegion !== "") {
+                                    //THEN...
+                                    //filter countries from API based on search.
+                                    //looks at name and capital city.
+                                    var countriesFiltered = data.filter(function(country){
+                                        return country.region === selectedRegion && (country.name.toLowerCase().includes(search) || country.capital.toLowerCase().includes(search));
+                                    });
+
+                                    //table update based on search
+                                    var table = '<table><tr><th>Code</th><th>Flag</th><th>Name</th><th>Capital</th><th>Population</th><th>Area</th><th>Population Density</th></tr>';
+                                    countriesFiltered.forEach(function(country) {
+                                        table += '<tr><th>' + country.code + '</th><td><img src="' + country.flag + '" alt="Flag"></td><td>' + country.name + '</td><td>' + country.capital + '</td><td>' + country.population + '</td><td>' + country.area + '</td><td>' + (country.population/country.area).toFixed(1) + '</td></tr>';
+                                    });
+                                    table += '</table>';
+                                    $demo.html(table);
+                                } else {
+                                    // empty if no selection
+                                    $demo.html('');
+                                }
+                            });
+                        }
+                    });
+                } else {
+                    // empty if no selection
+                    document.getElementById("demo").innerHTML = ""; 
+                }
+            });
+        });
+    </script>
+</head>
+
+<body>
+    <!--Main-->
+    <div id="content-container">
+        <h1 id="title">Country List</h1>
+        <div id="search">
+            <!--Search Bar-->
+            <input type="text" id="searchBar" placeholder="Search...">
+        </div>
+        <!--Info Values-->
+        <div id="count">
+            <p>Number of Countries:</p>
+        </div>
+        <div id = "largestArea">
+            <p>Largest Area:</p>
+        </div>
+        <div id = "largestPop">
+            <p>Largest Population:</p>
+        </div>
+        <!-- Region Drop-Down -->
+        <select id="region-selector">
+            <option value="">Select a Region:</option>
+        </select>
+        <!-- Dynamic Table -->
+        <div class="table-container" id="demo"></div>
+    </div>
+</body>
+</html>
